@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
-import { mkdtemp, mkdir, readdir, readFile, realpath, rm, writeFile } from "node:fs/promises";
+import { cp, mkdtemp, mkdir, readdir, readFile, realpath, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, sep } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -97,8 +97,12 @@ async function verifyPlugin(setup, liveSource) {
   setup.env.ADO_MCP_CONFIG = join(setup.home, "ado-config.json");
   const bundle = join(plugin, "server", "index.js");
   await command(process.execPath, [bundle, "config", "init"], setup);
+  await verifyRuntime(setup, bundle, plugin);
+}
+
+async function verifyRuntime(setup, bundle, cwd) {
   const transport = new StdioClientTransport({
-    command: process.execPath, args: [bundle], cwd: plugin, env: setup.env, stderr: "pipe",
+    command: process.execPath, args: [bundle], cwd, env: setup.env, stderr: "pipe",
   });
   const client = new Client({ name: "isolated-install-smoke", version: "1.0.0" });
   try {
@@ -112,6 +116,70 @@ async function verifyPlugin(setup, liveSource) {
     assert.ok(content?.type === "text");
     assert.deepEqual(JSON.parse(content.text), { organization: "example-org", profile: "example" });
   } finally { await client.close(); await transport.close(); }
+}
+
+async function verifyUserRegistration() {
+  const setup = await environment("registration");
+  const runtime = join(setup.home, "runtime");
+  await cp(join(root, "plugin"), runtime, { recursive: true });
+  const bundle = join(runtime, "server", "index.js");
+  const config = join(setup.home, "accounts.json");
+  setup.env.ADO_MCP_CONFIG = config;
+  await command(process.execPath, [bundle, "config", "init"], setup);
+  const path = join(setup.env.COPILOT_HOME, "mcp-config.json");
+  const baseline = {
+    mcpServers: {
+      ado: { type: "local", command: process.execPath, args: ["--version"], tools: [] },
+      "azure-devops": { type: "http", url: "https://example.invalid/mcp", tools: [] },
+    },
+  };
+  await writeFile(path, JSON.stringify(baseline, null, 2));
+  const before = JSON.parse(await readFile(path, "utf8"));
+  const skill = await readFile(join(root, "plugin", "skills", "install-azure-devops-mcp", "SKILL.md"), "utf8");
+  const toolMatch = /--tools ([a-z_,]+) --/.exec(skill);
+  assert.ok(toolMatch);
+  const tools = toolMatch[1].split(",");
+  let additions = 0;
+  async function ensureRegistration() {
+    const saved = JSON.parse(await readFile(path, "utf8"));
+    const current = saved.mcpServers["lawynn-azure-devops"];
+    if (current) {
+      if (current.command !== process.execPath || JSON.stringify(current.args) !== JSON.stringify([bundle]) ||
+          current.env?.ADO_MCP_CONFIG !== config || JSON.stringify(current.tools) !== JSON.stringify(tools)) {
+        throw new Error("Existing registration differs; refusing to replace it");
+      }
+      return;
+    }
+    await command(cli, ["mcp", "add", "lawynn-azure-devops", "--env", `ADO_MCP_CONFIG=${config}`,
+      "--tools", toolMatch[1], "--", process.execPath, bundle], setup);
+    additions++;
+  }
+  await ensureRegistration();
+  const first = await readFile(path, "utf8");
+  await ensureRegistration();
+  assert.equal(await readFile(path, "utf8"), first, "Identical registration was needlessly rewritten");
+  assert.equal(additions, 1);
+  const saved = JSON.parse(first);
+  for (const [name, value] of Object.entries(before.mcpServers)) assert.deepEqual(saved.mcpServers[name], value);
+  const registration = saved.mcpServers["lawynn-azure-devops"];
+  assert.equal(registration.type, "local");
+  assert.equal(registration.command, process.execPath);
+  assert.deepEqual(registration.args, [bundle]);
+  assert.deepEqual(registration.env, { ADO_MCP_CONFIG: config });
+  assert.deepEqual(registration.tools, tools);
+  assert.ok(!(await command(cli, ["mcp", "get", "lawynn-azure-devops", "--json"], setup)).includes("not found"));
+  const all = await command(cli, ["mcp", "list", "--json"], setup);
+  for (const name of ["lawynn-azure-devops", "azure-devops", "ado"]) assert.ok(all.includes(name));
+  const otherHost = await environment("other-host");
+  assert.ok(!(await command(cli, ["mcp", "list", "--json"], otherHost)).includes("lawynn-azure-devops"),
+    "Registration leaked into another host/configuration scope");
+  await verifyRuntime(setup, bundle, runtime);
+  const conflict = structuredClone(saved);
+  conflict.mcpServers["lawynn-azure-devops"].command = "different-command";
+  await writeFile(path, JSON.stringify(conflict));
+  const collision = await readFile(path, "utf8");
+  await assert.rejects(ensureRegistration(), /refusing to replace/);
+  assert.equal(await readFile(path, "utf8"), collision);
 }
 
 try {
@@ -139,10 +207,14 @@ try {
   const materializedSkill = await readFile(join(standalone.env.COPILOT_HOME, "skills", "install-azure-devops-mcp", "SKILL.md"), "utf8");
   assert.ok(materializedSkill.includes("name: install-azure-devops-mcp"));
   assert.deepEqual(await userPlugins(standalone), []);
+  await verifyUserRegistration();
   console.log(JSON.stringify({
     cli: version.split("\n")[0], sources: local ? "local checkout" : "public GitHub main",
     directPlugin: "passed", marketplacePlugin: "passed", standaloneSkill: "passed",
     stdioInitializeListCall: "passed", userConfiguration: "not modified", azureDevOpsRequests: 0,
+    scopedJsonRegistration: "passed", existingServersPreserved: true,
+    identicalRegistrationSkipped: true, conflictingRegistrationRefused: true,
+    desktopConversationToolsLoaded: "not tested",
   }, null, 2));
 } finally {
   await rm(temporary, { recursive: true, force: true });

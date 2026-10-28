@@ -108,6 +108,77 @@ upgrade Copilot. If the required plugin/skill commands are unavailable, install
 a compatible CLI through your normal approved setup process, rather than
 weakening policy or modifying the running desktop app.
 
+### Current-client registration and readiness
+
+The initial installation skill was incorrectly CLI-first: an installation
+attempt from a Copilot desktop chat reached a built-in safety-policy denial
+while inspecting the app UI and made no configuration changes. Neither an
+unverified source path nor a guessed "Installed → Add" UI action was a usable
+installation path. `plugin/mcp.json` existed; a lookup of `plugin/.mcp.json`
+was simply the wrong filename.
+
+The updated skill targets the **invoking client, execution host and requested
+scope** first. An installed CLI is not evidence that the conversation runs in
+that CLI. It prefers supported host-native registration controls, verifies
+absolute persistent runtime paths, reuses unambiguous scoped account setup,
+preserves unrelated registrations and uses a distinct standalone registration
+name, `lawynn-azure-devops`. New standalone registrations start with diagnostic
+and read-only tools rather than enabling writes by default.
+
+GitHub's [app customization documentation](https://docs.github.com/en/copilot/how-tos/github-copilot-app/customize-github-copilot-app#configuring-mcp-servers)
+explicitly states that repository and CLI MCP configurations are automatically
+available in the desktop app. The documented CLI `copilot mcp add` command is
+therefore a possible shared-user registration route **only when the app and
+CLI demonstrably use the same OS user, execution host and configuration scope**.
+It is not a universal desktop installation API. The implementation tests its
+configuration behavior in disposable CLI homes, not a real desktop installation.
+
+The same documentation provides the user-operated desktop route:
+**Customize → MCP → add a custom server**, then follow the actual prompts.
+The skill uses this precise handoff if no supported automatic control can target
+the current host. A policy denial must not be bypassed with CLI changes, database
+edits, hidden endpoints or alternative UI automation. No desktop UI action is
+attempted as part of this improvement's tests.
+
+For direct JSON registration, the supported global file is
+`<COPILOT_HOME>/mcp-config.json`, defaulting to `~/.copilot/mcp-config.json`;
+project-scoped options are `.mcp.json` or `.github/mcp.json`. The skill includes
+the documented `mcpServers` envelope with a `local` server, absolute command
+and args, a non-secret `ADO_MCP_CONFIG` path and explicit read-only tools.
+It prefers the supported CLI writer, otherwise prescribes a validated,
+concurrency-checked atomic merge without overwriting existing keys/servers.
+No new installer writes internal app storage.
+
+The disposable CLI smoke test now exercises that writer independently of
+plugin installation: it seeds existing `ado`/`azure-devops` registrations,
+adds `lawynn-azure-devops`, checks preservation, skips an identical registration,
+refuses a conflicting one and verifies another configuration home is unaffected.
+It then launches the saved standalone runtime for an actual MCP protocol check.
+Those are isolated CLI/configuration checks, not proof the user's desktop
+shares that directory or loaded tools in the current conversation.
+
+Registration is not tool loading: the CLI's **interactive** `/mcp add` flow
+documents immediate availability, but an external registration subprocess does
+not demonstrate a live desktop/CLI conversation has reconnected. The skill
+checks the current agent's tool catalog and calls `ado_config`/`ado_context`
+when present. With no supported reconnect control, it reports registration
+separately and requests a new session in that same client. Runtime smoke tests,
+saved configuration, credential setup and current-conversation tool calls are
+four distinct evidence levels, never interchangeable.
+
+Actual authentication still requires a valid intended profile and organization
+permissions. No secrets are accepted in chat/installer arguments, and no
+interactive login is triggered. A GUI process is not assumed to inherit the
+installer shell's environment. An existing explicit Azure CLI profile can
+avoid token environment plumbing when its identity is already established;
+it must not silently select a different cached account.
+
+Sources:
+
+- [App MCP configuration and documented custom-server UI](https://docs.github.com/en/copilot/how-tos/github-copilot-app/customize-github-copilot-app#configuring-mcp-servers)
+- [Supported CLI user MCP registration and interactive reload behavior](https://docs.github.com/en/copilot/how-tos/copilot-cli/customize-copilot/add-mcp-servers)
+- [CLI configuration directory and COPILOT_HOME](https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-config-dir-reference)
+
 Sources:
 
 - [Creating a plugin for Copilot CLI](https://docs.github.com/en/copilot/how-tos/copilot-cli/customize-copilot/plugins-creating)

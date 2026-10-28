@@ -20,7 +20,30 @@ Marketplace or curated Copilot marketplace publication has been performed.
 Copilot desktop plugin installation has **not** been verified.
 See [publication research and release checklist](docs/publishing.md).
 
-### Direct GitHub installation (no marketplace registration)
+### Install for the agent you are using
+
+Give your agent the [installation skill URL](https://github.com/lawynn/azure-devops-mcp/blob/main/plugin/skills/install-azure-devops-mcp/SKILL.md)
+and ask it to install/configure the MCP for **this client and execution host**.
+The skill now selects a supported registration route, reuses unambiguous account
+configuration, and distinguishes runtime installation, client registration,
+credential readiness and tools loaded in the current conversation.
+
+For the Copilot desktop app, GitHub documents shared repository/CLI MCP
+configuration and **Customize → MCP** for custom-server installation. Shared
+settings are usable only when the agent establishes the same OS user, host and
+effective configuration scope; a CLI plugin installed elsewhere is not desktop
+readiness. If app policy blocks registration, the skill stops at that boundary
+and prepares a verified command/config for the documented user-operated flow.
+It never edits internal app databases or promises same-turn tool loading.
+The skill can register the server in the documented user JSON
+`<COPILOT_HOME>/mcp-config.json` (default `~/.copilot/mcp-config.json`), preferring
+the supported `copilot mcp add` writer. It includes a merge-safe JSON recipe for
+hosts without that writer, with separate global/project scope and a distinct
+`lawynn-azure-devops` identity. This is conditional on verified client/host scope,
+not a way around policy or an assertion that the current chat can hot-load tools.
+See [current-client setup and limitations](docs/publishing.md#current-client-registration-and-readiness).
+
+### Direct GitHub CLI plugin installation (no marketplace registration)
 
 With Node.js 22+, Git and a compatible Copilot CLI installed:
 
@@ -36,8 +59,8 @@ not require npm or an npm-published package. Start a new CLI session afterward.
 
 **For agents given this repository URL:** read the
 [direct installation skill](plugin/skills/install-azure-devops-mcp/SKILL.md).
-It covers installation scope, prerequisites, explicit account setup and safe
-verification. To add just that onboarding skill to Copilot CLI, without
+It covers the invoking client/host, supported registration, account reuse and
+safe verification. To add just that onboarding skill to Copilot CLI, without
 installing the server or registering a marketplace:
 
 ```text

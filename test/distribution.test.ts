@@ -37,3 +37,39 @@ test("plugin skills have discoverable Agent Skills frontmatter matching director
   }
   assert.deepEqual(names.sort(), ["azure-devops", "install-azure-devops-mcp"]);
 });
+
+test("installation guide targets the invoking host and separates registration from live readiness", async () => {
+  const skill = await read("plugin/skills/install-azure-devops-mcp/SKILL.md");
+  for (const required of [
+    "client hosting this conversation", "execution host", "same local",
+    "effective Copilot configuration directory", "stop registration",
+    "Customize → MCP", "copilot mcp add lawynn-azure-devops",
+    "registered, tools not loaded in this conversation",
+    "runtime installed; client registered; credentials", "never `--show-secrets`",
+    "plugin/mcp.json", "identical registration exists", "preserve",
+  ]) assert.ok(skill.toLowerCase().includes(required.toLowerCase()), `Missing installation safeguard: ${required}`);
+  const match = /--tools ([a-z_,]+) --/.exec(skill);
+  assert.ok(match);
+  const tools = match[1]!.split(",");
+  assert.ok(tools.includes("ado_config") && tools.includes("ado_context"));
+  assert.ok(!tools.some((name) => /create|update|^ado_pipeline_run$/.test(name)));
+});
+
+test("documented JSON registration matches the standalone command and avoids existing server identities", async () => {
+  const skill = await read("plugin/skills/install-azure-devops-mcp/SKILL.md");
+  const code = /```json\r?\n([\s\S]*?)\r?\n```/.exec(skill);
+  assert.ok(code);
+  const json = JSON.parse(code[1]!);
+  assert.deepEqual(Object.keys(json.mcpServers), ["lawynn-azure-devops"]);
+  const entry = json.mcpServers["lawynn-azure-devops"];
+  assert.equal(entry.type, "local");
+  assert.equal(entry.args.length, 1);
+  assert.ok(entry.args[0].endsWith("\\plugin\\server\\index.js"));
+  assert.deepEqual(Object.keys(entry.env), ["ADO_MCP_CONFIG"]);
+  assert.deepEqual(entry.tools, /--tools ([a-z_,]+) --/.exec(skill)![1]!.split(","));
+  for (const required of [
+    "<COPILOT_HOME>/mcp-config.json", "~/.copilot/mcp-config.json",
+    "explicit project scope", ".github/mcp.json", "atomically",
+    "same host verification and policy boundaries",
+  ]) assert.ok(skill.includes(required));
+});
