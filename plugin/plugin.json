@@ -1,0 +1,10 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "azure-devops",
+  "version": "0.1.0",
+  "description": "Azure DevOps projects, repositories, PRs, work items and pipelines with explicit multi-account credential routing.",
+  "author": { "name": "lawynn" },
+  "repository": "https://github.com/lawynn/azure-devops-mcp",
+  "license": "MIT",
+  "keywords": ["azure-devops", "mcp", "multi-account"]
+}

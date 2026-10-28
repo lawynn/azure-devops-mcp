@@ -1,0 +1,16 @@
+{
+  "name": "lawynn-azure-devops",
+  "owner": { "name": "lawynn" },
+  "metadata": {
+    "description": "Repository-aware Azure DevOps tools for Copilot",
+    "version": "0.1.0"
+  },
+  "plugins": [
+    {
+      "name": "azure-devops",
+      "description": "Azure DevOps MCP server with isolated multi-account credential routing",
+      "version": "0.1.0",
+      "source": "./plugin"
+    }
+  ]
+}

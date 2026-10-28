@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "profiles": {
+    "personal": {
+      "type": "pat",
+      "organizations": ["example-personal"],
+      "tokenEnv": "ADO_PERSONAL_PAT"
+    },
+    "work": {
+      "type": "azure-cli",
+      "organizations": ["example-work"],
+      "configDir": "C:\\Users\\EXAMPLE\\.azure-work",
+      "tenant": "00000000-0000-0000-0000-000000000001"
+    },
+    "work-service": {
+      "type": "client-secret",
+      "organizations": ["example-work"],
+      "tenantId": "00000000-0000-0000-0000-000000000001",
+      "clientId": "00000000-0000-0000-0000-000000000002",
+      "secretEnv": "ADO_WORK_SERVICE_SECRET"
+    }
+  },
+  "bindings": [
+    { "organization": "example-personal", "profile": "personal" },
+    { "organization": "example-work", "profile": "work" },
+    { "organization": "example-work", "project": "Automation", "profile": "work-service" }
+  ]
+}

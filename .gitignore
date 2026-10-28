@@ -1,0 +1,12 @@
+node_modules/
+*.tgz
+coverage/
+.env
+.env.*
+!.env.example
+config.local.json
+/config.json
+*.pem
+*.pfx
+*.key
+.azure/
