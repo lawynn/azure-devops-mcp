@@ -62,6 +62,19 @@ async function userPlugins(setup) {
   return list.filter((plugin) => plugin.source !== "builtin");
 }
 
+function skillNames(value) {
+  if (Array.isArray(value)) return value.flatMap(skillNames);
+  if (value && typeof value === "object") return Object.entries(value).flatMap(([key, child]) =>
+    key === "name" && typeof child === "string" ? [child] : skillNames(child));
+  return [];
+}
+
+function assertSkillListed(json, expected) {
+  const names = skillNames(JSON.parse(json));
+  assert.ok(names.some((name) => name === expected || name.endsWith(`:${expected}`)),
+    `Skill ${expected} was not discovered`);
+}
+
 async function verifyPlugin(setup, liveSource) {
   const list = await userPlugins(setup);
   assert.equal(list.length, 1);
@@ -74,8 +87,8 @@ async function verifyPlugin(setup, liveSource) {
   const hash = createHash("sha256").update(await readFile(join(plugin, "server", "index.js"))).digest("hex");
   assert.equal(hash, expectedHash, "Installed runtime differs from this checkout");
   const skills = await command(cli, ["skill", "list", "--json"], setup);
-  assert.ok(skills.includes("install-azure-devops-mcp"));
-  assert.ok(skills.includes("azure-devops"));
+  assertSkillListed(skills, "install-azure-devops-mcp");
+  assertSkillListed(skills, "azure-devops");
   const mcp = JSON.parse(await readFile(join(plugin, "mcp.json"), "utf8"));
   const definition = mcp.mcpServers["azure-devops"];
   assert.equal(definition.command, "node");
@@ -122,7 +135,9 @@ try {
     "https://raw.githubusercontent.com/lawynn/azure-devops-mcp/main/plugin/skills/install-azure-devops-mcp/SKILL.md";
   await command(cli, ["skill", "add", skillSource], standalone);
   const skillList = await command(cli, ["skill", "list", "--json"], standalone);
-  assert.ok(skillList.includes("install-azure-devops-mcp"));
+  assertSkillListed(skillList, "install-azure-devops-mcp");
+  const materializedSkill = await readFile(join(standalone.env.COPILOT_HOME, "skills", "install-azure-devops-mcp", "SKILL.md"), "utf8");
+  assert.ok(materializedSkill.includes("name: install-azure-devops-mcp"));
   assert.deepEqual(await userPlugins(standalone), []);
   console.log(JSON.stringify({
     cli: version.split("\n")[0], sources: local ? "local checkout" : "public GitHub main",

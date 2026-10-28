@@ -85,11 +85,13 @@ Standalone skill installation must not install a plugin. Local
 directory-sourced marketplaces load their source files live rather than
 creating an installed-plugin copy; the script handles this documented behavior.
 
-Local routes were exercised on Windows with Copilot CLI
-`1.0.102-0.unstable.r40141230562.g130d689`. Public-main routes are checked after
-the catalog is pushed. Other CLI versions are documented support, not an
-exercised compatibility matrix; the server's own CI tests cover Windows/Linux
-on Node 22/24 separately.
+Both local routes and all three **public GitHub `main` routes** (direct
+subdirectory plugin, repository marketplace plugin and raw HTTPS standalone
+skill) were exercised successfully on Windows on 2026-10-28 with Copilot CLI
+`1.0.102-0.unstable.r40141230562.g130d689`. Each plugin install resolved the
+bundled runtime, exposed both skills and passed the initialize/list/call check.
+Other CLI versions are documented support, not an exercised compatibility
+matrix; the server's own CI tests cover Windows/Linux on Node 22/24 separately.
 
 On Windows, disabling auto-update can select an older built-in CLI rather than
 a newer already-cached version. For a known compatible version already installed,
