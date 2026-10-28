@@ -14,19 +14,59 @@ This is an independent community project, not a Microsoft product.
 ## Status and installation
 
 Version 0.1.0 is a bounded first release, not parity with the official Azure
-DevOps MCP server. The source branch includes the runtime artifact. No npm,
-MCP Registry, VS Code Marketplace or curated Copilot marketplace publication
-has been performed. Copilot CLI manifest compatibility follows the published
-Agent Plugins schemas; installation in the Copilot desktop app has **not** been
-verified. See [publication research and release checklist](docs/publishing.md).
+DevOps MCP server. The public `main` branch includes the bundled runtime and
+repository-hosted Copilot marketplace catalog. No npm, MCP Registry, VS Code
+Marketplace or curated Copilot marketplace publication has been performed.
+Copilot desktop plugin installation has **not** been verified.
+See [publication research and release checklist](docs/publishing.md).
+
+### Direct GitHub installation (no marketplace registration)
+
+With Node.js 22+, Git and a compatible Copilot CLI installed:
+
+```text
+copilot plugin install lawynn/azure-devops-mcp:plugin
+copilot plugin list --json
+copilot skill list --json
+```
+
+The `:plugin` suffix is required: `plugin/` is the plugin root, not the repository
+root. The plugin bundles both the server and its two skills. Installation does
+not require npm or an npm-published package. Start a new CLI session afterward.
+
+**For agents given this repository URL:** read the
+[direct installation skill](plugin/skills/install-azure-devops-mcp/SKILL.md).
+It covers installation scope, prerequisites, explicit account setup and safe
+verification. To add just that onboarding skill to Copilot CLI, without
+installing the server or registering a marketplace:
+
+```text
+copilot skill add https://raw.githubusercontent.com/lawynn/azure-devops-mcp/main/plugin/skills/install-azure-devops-mcp/SKILL.md
+```
+
+The skill is automatically discovered when installing the full plugin; adding
+it separately is optional. Reading or adding a skill does not authorize an
+agent to change a different client's settings.
+
+### Repository-hosted marketplace
+
+```text
+copilot plugin marketplace add lawynn/azure-devops-mcp
+copilot plugin install azure-devops@lawynn-azure-devops
+```
+
+This public catalog is hosted by this repository, **not automatically included
+in a built-in or curated marketplace**. Both routes install the same `plugin/`
+content. Other MCP clients can use the standalone command below; their plugin
+and configuration formats are not assumed to be compatible.
+
+### Explicit account setup
 
 Run directly from a checkout (no dependency installation):
 
 ```powershell
 git clone https://github.com/lawynn/azure-devops-mcp.git
 Set-Location azure-devops-mcp
-# Until the implementation is merged, check out its pushed source branch:
-git switch lawynn-azure-devops-mcp
 node .\plugin\server\index.js config init
 ```
 
@@ -83,22 +123,15 @@ Generic MCP client configuration (replace the absolute path):
 }
 ```
 
-For Copilot CLI, the current branch can be installed from the local checkout:
+For Copilot CLI, a source checkout can also be installed locally:
 
 ```powershell
 copilot plugin install .\plugin
 ```
 
-After the implementation is merged to the default branch, the repository-hosted
-marketplace route is:
-
-```text
-copilot plugin marketplace add lawynn/azure-devops-mcp
-copilot plugin install azure-devops@lawynn-azure-devops
-```
-
-These are instructions, not actions performed by this project. Plugin setup
-does not grant Azure DevOps access or configure credentials for you.
+Plugin setup does not grant Azure DevOps access or configure credentials for
+you. No installation into your normal CLI/desktop configuration is performed
+by the repository's test suite.
 
 ## Routing and credentials
 
@@ -184,6 +217,13 @@ npm run check
 npm run check:bundle
 npm run validate:metadata
 ```
+
+With Copilot CLI available, `npm run smoke:install -- --local` tests local
+plugin/marketplace/skill installation; `npm run smoke:install` tests those routes
+against public GitHub `main`. Both use disposable configuration directories and
+fake account metadata, then exercise the installed runtime over stdio. They do
+not launch an agent session, request Azure DevOps tokens, or modify your real
+Copilot settings.
 
 Tests use mocked Azure DevOps REST/identity providers, real local Git context
 discovery and real MCP initialize/list/call exchanges. The bundled plugin is

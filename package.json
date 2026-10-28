@@ -16,6 +16,7 @@
     "check": "npm run typecheck && npm run build && npm test",
     "check:bundle": "node scripts/build.mjs --check",
     "validate:metadata": "node scripts/validate-metadata.mjs",
+    "smoke:install": "node scripts/smoke-install.mjs",
     "prepack": "npm run check"
   },
   "repository": {
