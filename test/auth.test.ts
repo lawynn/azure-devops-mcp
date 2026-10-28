@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp, realpath, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createCredentialProvider, ADO_RESOURCE, ADO_SCOPE } from "../src/auth.js";
@@ -87,11 +87,12 @@ test("Azure Identity providers get only the selected ADO scope and an abort sign
 test("git helper is noninteractive, repository/path/username scoped and checks returned identity", async () => {
   const dir = await mkdtemp(join(tmpdir(), "ado-helper-"));
   try {
+    const resolved = await realpath(dir);
     const ctx = { ...context, repoPath: dir };
     const runner: Runner = async (_command, args, options) => {
       if (args.includes("remote")) return "https://dev.azure.com/one/Project%20A/_git/repo";
       assert.ok(args.includes("credential.useHttpPath=true"));
-      assert.ok(args.includes(dir));
+      assert.ok(args.includes(resolved));
       assert.equal(options?.env?.GIT_TERMINAL_PROMPT, "0");
       assert.equal(options?.env?.GCM_INTERACTIVE, "never");
       assert.match(options?.input ?? "", /path=one\/Project%20A\/_git\/repo/);
